@@ -1,0 +1,1471 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#0a0b10" />
+<meta name="color-scheme" content="dark" />
+<title>Тикайло</title>
+<style>
+  :root{
+    --bg:#0a0b10;
+    --fg:#e9edf8;
+    --muted:#8d9ab8;
+    --size: clamp(110px, min(36vh, 54vw), 220px);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{height:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--fg);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    display:flex;flex-direction:column;
+    height:100vh;height:100dvh;max-height:100dvh;overflow:hidden;
+    user-select:none;-webkit-user-select:none;touch-action:manipulation;
+  }
+  body::before{
+    content:"";position:fixed;inset:-20%;pointer-events:none;z-index:0;
+    background:
+      radial-gradient(circle at 50% 10%, rgba(88,120,255,.20), transparent 55%),
+      radial-gradient(circle at 10% 90%, rgba(255,190,60,.10), transparent 50%),
+      radial-gradient(circle at 90% 85%, rgba(0,220,200,.10), transparent 50%);
+  }
+
+  /* ---------- стекло ---------- */
+  .glass{
+    background:rgba(255,255,255,.055);
+    border:1px solid rgba(255,255,255,.12);
+    backdrop-filter:blur(14px) saturate(1.6);
+    -webkit-backdrop-filter:blur(14px) saturate(1.6);
+    box-shadow:0 10px 30px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.18);
+  }
+  .ic{width:22px;height:22px;display:block;flex:0 0 auto;
+    fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+  .ic.sm{width:16px;height:16px;stroke-width:1.9}
+  .ic.lg{width:26px;height:26px}
+
+  /* ---------- шапка ---------- */
+  header{
+    position:relative;z-index:3;width:100%;max-width:620px;margin:0 auto;
+    padding:calc(env(safe-area-inset-top, 0px) + 12px) 18px 4px;
+    text-align:center;min-width:0;
+  }
+  .topbar{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .tb{
+    display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;
+    font-size:12px;color:var(--muted);white-space:nowrap;
+  }
+  .tb b{color:#e9edf8;font-weight:700;font-variant-numeric:tabular-nums}
+  .tb.tk b{color:#ffcf6b}
+  .tb .ic{width:15px;height:15px;opacity:.9}
+  .tkTimer{
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    margin:0 16px 8px;max-width:588px;padding:9px 14px;border-radius:14px;
+    font-size:12.5px;color:var(--muted);
+  }
+  .tkTimer b{color:#ffcf6b;font-weight:700;font-variant-numeric:tabular-nums;font-size:14.5px}
+  .score{
+    font-size:clamp(32px,8.5vw,50px);font-weight:800;line-height:1.05;
+    letter-spacing:-1.5px;font-variant-numeric:tabular-nums;
+    background:linear-gradient(180deg,#ffffff,#93a9ff 90%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .stats{display:flex;justify-content:center;gap:5px;flex-wrap:wrap;margin-top:9px;min-width:0;max-width:100%}
+  .chip{
+    display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:999px;
+    font-size:12px;color:var(--muted);white-space:nowrap;
+    background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);
+  }
+  .chip b{color:#c9d5f7;font-weight:600;font-variant-numeric:tabular-nums}
+  .chip.gold b{color:#ffcf6b}
+  .chip[hidden]{display:none}
+  .tools{
+    position:absolute;right:12px;top:calc(env(safe-area-inset-top, 0px) + 8px);
+    display:flex;gap:6px;z-index:5;
+  }
+  .btn{
+    width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.12);
+    background:rgba(255,255,255,.05);color:#8b98b8;padding:0;cursor:pointer;
+    display:grid;place-items:center;
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  }
+  .btn:active{transform:scale(.92)}
+  .btn.off{opacity:.45}
+
+  /* ---------- сцена ---------- */
+  main{
+    flex:1;min-height:0;position:relative;z-index:2;
+    display:flex;flex-direction:column;
+    padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 92px);
+  }
+  .panel{display:none;flex:1;min-height:0;flex-direction:column}
+  body[data-tab="tap"] #panelTap,
+  body[data-tab="ach"] #panelAch,
+  body[data-tab="shop"] #panelShop{display:flex}
+  .scroll{overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;flex:1;min-height:0}
+
+  #stage{
+    flex:1 1 auto;min-height:calc(var(--size) + 12px);position:relative;width:100%;max-width:620px;margin:0 auto;
+    display:grid;place-items:center;overflow:hidden;
+  }
+  .halo{
+    position:absolute;width:calc(var(--size) * 1.7);height:calc(var(--size) * 1.7);
+    border-radius:50%;pointer-events:none;
+    background:radial-gradient(circle, rgba(109,139,255,.28), rgba(109,139,255,.06) 45%, transparent 70%);
+    animation:breathe 3.6s ease-in-out infinite;
+  }
+  @keyframes breathe{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.12);opacity:1}}
+
+  .tik{
+    position:relative;width:var(--size);height:var(--size);
+    border-radius:50%;border:0;padding:0;cursor:pointer;
+    background:radial-gradient(circle at 35% 28%, #5a6dff 0%, #232a55 55%, #0e1122 100%);
+    box-shadow:0 0 0 1px rgba(140,165,255,.30), 0 24px 70px -14px rgba(80,110,255,.65),
+               inset 0 0 46px rgba(130,165,255,.22);
+    transition:transform .09s ease, filter .12s ease;overflow:hidden;
+    display:grid;place-items:center;
+  }
+  .tik:active,.tik.hit{transform:scale(.92);filter:brightness(1.25)}
+  .ring{
+    position:absolute;inset:-14px;border-radius:50%;
+    border:1px solid rgba(130,160,255,.35);animation:pulse 3s ease-out infinite;pointer-events:none;
+  }
+  .ring.r2{animation-delay:1.5s}
+  @keyframes pulse{0%{transform:scale(.92);opacity:.7}70%{transform:scale(1.18);opacity:0}100%{opacity:0}}
+  .photo{
+    position:relative;width:84%;aspect-ratio:1/1;border-radius:50%;
+    overflow:hidden;pointer-events:none;display:grid;place-items:center;
+    background:radial-gradient(circle at 50% 32%, rgba(120,150,255,.30), rgba(10,13,26,.94) 72%), #090c18;
+    box-shadow:inset 0 0 34px rgba(0,0,0,.65), inset 0 0 0 1px rgba(255,255,255,.10), 0 0 26px rgba(109,139,255,.25);
+  }
+  .photo .face{
+    width:94%;height:94%;object-fit:contain;object-position:center;
+    filter:drop-shadow(0 10px 20px rgba(0,0,0,.55));
+    animation:bob 3.2s ease-in-out infinite;
+  }
+  @keyframes bob{0%,100%{transform:translateY(1px)}50%{transform:translateY(-5px)}}
+
+  .float{
+    position:absolute;pointer-events:none;font-weight:800;font-size:21px;color:#fff;
+    text-shadow:0 0 20px rgba(130,165,255,.95);animation:rise .85s ease-out forwards;
+  }
+  .float.crit{font-size:27px;color:#ffd76a;text-shadow:0 0 22px rgba(255,190,60,.95),0 0 44px rgba(255,120,0,.6)}
+  .float.lucky{color:#7dffc4;text-shadow:0 0 22px rgba(60,255,170,.95),0 0 40px rgba(0,220,160,.5)}
+  @keyframes rise{
+    0%{opacity:1;transform:translate(-50%,-50%) scale(.7)}
+    20%{transform:translate(-50%,-65%) scale(1.12)}
+    100%{opacity:0;transform:translate(-50%,-190%) scale(1)}
+  }
+  .ripple{
+    position:absolute;width:130px;height:130px;border-radius:50%;pointer-events:none;
+    border:2px solid rgba(150,180,255,.75);transform:translate(-50%,-50%) scale(.15);
+    animation:rip .55s ease-out forwards;
+  }
+  .ripple.crit{border-color:rgba(255,200,80,.9);width:190px;height:190px}
+  @keyframes rip{to{transform:translate(-50%,-50%) scale(1);opacity:0}}
+  .spark{
+    position:absolute;width:6px;height:6px;border-radius:50%;pointer-events:none;
+    background:#a8bcff;box-shadow:0 0 12px #6d8bff;animation:spark .62s ease-out forwards;
+  }
+  .spark.crit{background:#ffd76a;box-shadow:0 0 14px #ffb020}
+  @keyframes spark{
+    0%{transform:translate(-50%,-50%) scale(1);opacity:1}
+    100%{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(0);opacity:0}
+  }
+  #stage.shake{animation:shake .22s ease}
+  @keyframes shake{
+    0%,100%{transform:translate(0,0)}25%{transform:translate(-4px,2px)}
+    50%{transform:translate(4px,-2px)}75%{transform:translate(-2px,-1px)}
+  }
+
+  /* ---------- магазины ---------- */
+  .list{
+    display:grid;gap:8px;padding:8px 14px 14px;
+    grid-template-columns:repeat(auto-fit, minmax(215px, 1fr));
+    width:100%;max-width:620px;margin:0 auto;
+  }
+  #shop{
+    flex:0 0 auto;max-height:min(38vh, 360px);overflow-y:auto;overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+    border-top:1px solid rgba(255,255,255,.06);
+  }
+  .up{
+    display:flex;align-items:center;gap:11px;width:100%;text-align:left;
+    padding:10px 12px;border-radius:16px;font:inherit;color:inherit;cursor:pointer;
+    background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.07);
+    transition:transform .12s ease, background .2s, border-color .2s, opacity .2s;
+  }
+  .up:active{transform:scale(.985)}
+  .up.can{background:linear-gradient(135deg, rgba(95,125,255,.22), rgba(95,125,255,.06));border-color:rgba(125,155,255,.45)}
+  .up.poor{opacity:.55}
+  .up.maxed{opacity:.75;border-color:rgba(75,227,164,.4)}
+  .up .ico{
+    width:38px;height:38px;flex:0 0 38px;border-radius:12px;
+    display:grid;place-items:center;color:#a9b8da;
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.06);
+  }
+  .up .txt{flex:1;min-width:0}
+  .up .nm{font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .up .lvl{font-size:10.5px;font-weight:600;color:#8fa4d8;background:rgba(255,255,255,.07);padding:1px 6px;border-radius:999px}
+  .up .ds{font-size:11.5px;color:var(--muted);margin-top:2px}
+  .up .cost{
+    font-weight:700;font-size:14px;font-variant-numeric:tabular-nums;color:#93aaff;
+    white-space:nowrap;display:flex;align-items:center;gap:4px;
+  }
+  .up.poor .cost{color:#6a7699}
+  .up.maxed .cost{color:#4be3a4;font-size:12px}
+  .up.gold .ico{color:#ffcf6b;background:rgba(255,200,80,.10);border-color:rgba(255,200,80,.22)}
+  .up.gold .cost{color:#ffcf6b}
+  .up.gold.can{border-color:rgba(255,200,80,.45);background:linear-gradient(135deg, rgba(255,200,80,.20), rgba(255,200,80,.05))}
+
+  /* ---------- шапки панелей ---------- */
+  .phead{
+    width:100%;max-width:620px;margin:0 auto;padding:10px 16px 6px;
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+  }
+  .phead .ttl{font-size:14px;color:#b9c6e6;display:flex;align-items:center;gap:7px}
+  .phead .ttl b{color:#fff;font-variant-numeric:tabular-nums}
+  .phead .gold{display:flex;align-items:center;gap:6px;font-size:13px;color:#ffcf6b;font-weight:700}
+  .achBar{height:8px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden;border:1px solid rgba(255,255,255,.06);margin:0 16px 4px;max-width:588px}
+  .achBar i{
+    display:block;height:100%;width:0;border-radius:999px;
+    background:linear-gradient(90deg,#6d8bff,#4be3a4);
+    box-shadow:0 0 14px rgba(75,227,164,.5);
+    transition:width .5s cubic-bezier(.3,1,.4,1);
+  }
+
+  /* ---------- достижения ---------- */
+  .achCard{
+    display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:15px;
+    background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);
+    opacity:.5;transition:opacity .4s ease, border-color .4s, background .4s;
+  }
+  .achCard.done{
+    opacity:1;border-color:rgba(75,227,164,.32);
+    background:linear-gradient(135deg, rgba(75,227,164,.13), rgba(75,227,164,.03));
+  }
+  .achCard .ico{width:36px;height:36px;flex:0 0 36px;border-radius:11px;display:grid;place-items:center;color:#7f8cae;background:rgba(255,255,255,.05)}
+  .achCard.tk .ico{color:#ffcf6b;background:rgba(255,200,80,.10)}
+  .achCard.tk{border-color:rgba(255,200,80,.22)}
+  .achCard.done .ico{color:#4be3a4;background:rgba(75,227,164,.12)}
+  .achCard .txt{flex:1;min-width:0}
+  .achCard .nm{font-size:13px;font-weight:600;display:block}
+  .achCard .ds{font-size:11px;color:var(--muted);display:block;margin-top:2px}
+  .achCard .rw{font-size:11px;color:#ffcf6b;display:block;margin-top:3px}
+  .achCard .tick{width:18px;height:18px;color:#6a7699}
+  .achCard.done .tick{color:#4be3a4}
+  @keyframes pop{0%{transform:scale(.7);opacity:0}60%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+  .achCard.done.pop{animation:pop .45s cubic-bezier(.34,1.5,.5,1)}
+
+  /* ---------- док вкладок ---------- */
+  .dock{
+    position:fixed;left:50%;transform:translateX(-50%);
+    bottom:calc(env(safe-area-inset-bottom, 0px) + 10px);
+    display:inline-flex;gap:2px;padding:5px;border-radius:24px;z-index:40;
+    background:rgba(16,20,34,.55);
+    border:1px solid rgba(255,255,255,.14);
+    backdrop-filter:blur(22px) saturate(1.9);
+    -webkit-backdrop-filter:blur(22px) saturate(1.9);
+    box-shadow:0 20px 50px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.25);
+    max-width:calc(100% - 24px);
+  }
+  .dock .ind{
+    position:absolute;top:0;left:0;width:0;height:0;border-radius:20px;pointer-events:none;overflow:hidden;
+    background:linear-gradient(150deg, rgba(255,255,255,.5), rgba(255,255,255,.12) 40%, rgba(120,150,255,.4) 72%, rgba(90,120,255,.24));
+    border:1px solid rgba(255,255,255,.4);
+    box-shadow:0 8px 22px rgba(70,100,255,.45), inset 0 1px 0 rgba(255,255,255,.7), inset 0 -3px 8px rgba(20,30,80,.35);
+    transition:left .42s cubic-bezier(.34,1.42,.5,1), width .42s cubic-bezier(.34,1.42,.5,1),
+               top .42s cubic-bezier(.34,1.42,.5,1), height .42s cubic-bezier(.34,1.42,.5,1);
+  }
+  .dock .ind::after{
+    content:"";position:absolute;inset:1px;border-radius:20px;
+    background:linear-gradient(120deg, rgba(255,255,255,.55), rgba(255,255,255,0) 45%);
+  }
+  .tab{
+    position:relative;z-index:1;border:0;background:none;color:#98a6c6;
+    font:inherit;font-size:12.5px;padding:9px 14px;border-radius:20px;cursor:pointer;
+    display:flex;align-items:center;gap:7px;white-space:nowrap;transition:color .3s ease;
+  }
+  .tab.active{color:#fff}
+  .badge{
+    font-style:normal;font-size:11px;color:#d6e3ff;background:rgba(255,255,255,.14);
+    padding:2px 7px;border-radius:999px;font-variant-numeric:tabular-nums;
+  }
+  .tab .ic{width:18px;height:18px}
+
+  /* ---------- тосты ---------- */
+  #toasts{
+    position:fixed;left:50%;top:calc(env(safe-area-inset-top, 0px) + 10px);transform:translateX(-50%);
+    z-index:60;display:flex;flex-direction:column;align-items:center;gap:8px;
+    width:max-content;max-width:92vw;pointer-events:none;
+  }
+  .toast{
+    display:flex;align-items:center;gap:8px;
+    padding:10px 16px;border-radius:999px;font-size:13px;text-align:center;
+    background:rgba(18,22,38,.92);border:1px solid rgba(125,155,255,.38);
+    box-shadow:0 12px 34px rgba(0,0,0,.6);
+    animation:tin .3s ease, tout .35s ease 2.9s forwards;
+  }
+  .toast .ic{color:#ffcf6b}
+  @keyframes tin{from{opacity:0;transform:translateY(-10px)}}
+  @keyframes tout{to{opacity:0;transform:translateY(-10px)}}
+</style>
+</head>
+<body data-tab="tap">
+
+<svg style="display:none" aria-hidden="true">
+  <symbol id="i-hand" viewBox="0 0 24 24"><path d="M11 21v-8H9a3 3 0 0 1-3-3v-2a2 2 0 0 1 4 0v1h1V5a2 2 0 0 1 4 0v8h1V9a2 2 0 0 1 4 0v7a5 5 0 0 1-5 5h-4z"/></symbol>
+  <symbol id="i-fist" viewBox="0 0 24 24"><rect x="5" y="7" width="14" height="12" rx="4"/><path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M9 11h6"/></symbol>
+  <symbol id="i-bot" viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 8V4M9.5 13h.01M14.5 13h.01M9.5 16.5h5M2 12v3M22 12v3"/></symbol>
+  <symbol id="i-arm" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><path d="M8 8l4.5 4.5L16 9M12.5 12.5l3 8.5"/><circle cx="16.5" cy="8.5" r="2.2"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></symbol>
+  <symbol id="i-dice" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1"/><circle cx="15" cy="15" r="1"/><circle cx="12" cy="12" r="1"/></symbol>
+  <symbol id="i-clover" viewBox="0 0 24 24"><circle cx="9" cy="9" r="4"/><circle cx="15" cy="9" r="4"/><circle cx="9" cy="15" r="4"/><circle cx="15" cy="15" r="4"/><path d="M12 18v4"/></symbol>
+  <symbol id="i-burst" viewBox="0 0 24 24"><path d="M12 2l2.2 6.2L20 4l-2.4 6.4L22 12l-5.8 1.6L20 20l-5.8-4.2L12 22l-2.2-6.2L4 20l2.4-6.4L2 12l5.8-1.6L4 4l5.8 4.2z"/></symbol>
+  <symbol id="i-fire" viewBox="0 0 24 24"><path d="M12 3c3 3.5 5 6 5 9a5 5 0 0 1-10 0c0-2 1-3.6 2.2-5 .2 1.2.8 2 1.6 2.4C11 7.5 11 5 12 3z"/></symbol>
+  <symbol id="i-chartup" viewBox="0 0 24 24"><path d="M4 18l5-6 3.5 3.5L20 8"/><path d="M15 8h5v5"/></symbol>
+  <symbol id="i-chartdown" viewBox="0 0 24 24"><path d="M4 8l5 6 3.5-3.5L20 16"/><path d="M15 16h5v-5"/></symbol>
+  <symbol id="i-factory" viewBox="0 0 24 24"><path d="M3 20V10l5 3V10l5 3v-3l5 3v7z"/><path d="M8 20v-3M12 20v-3M16 20v-3"/></symbol>
+  <symbol id="i-beads" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="4.5" r="1.8"/><circle cx="18.5" cy="16" r="1.8"/><circle cx="5.5" cy="16" r="1.8"/></symbol>
+  <symbol id="i-gem" viewBox="0 0 24 24"><path d="M6 3h12l3 6-9 12L3 9z"/><path d="M3 9h18M9 3l-3 6 6 12M15 3l3 6-6 12"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><rect x="3" y="9" width="9" height="6" rx="3"/><rect x="12" y="9" width="9" height="6" rx="3"/></symbol>
+  <symbol id="i-bit" viewBox="0 0 24 24"><path d="M12 21V9M8 9h8l-1.5-4h-5z"/><path d="M9.5 13h5M10.5 17h3"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L5 13h6l-1 9 8-11h-6z"/></symbol>
+  <symbol id="i-paw" viewBox="0 0 24 24"><ellipse cx="7" cy="9" rx="1.7" ry="2.4"/><ellipse cx="12" cy="7" rx="1.7" ry="2.6"/><ellipse cx="17" cy="9" rx="1.7" ry="2.4"/><path d="M12 13c3 0 5 2 5 4.5S14.5 21 12 21s-5-1.5-5-3.5S9 13 12 13z"/></symbol>
+  <symbol id="i-amulet" viewBox="0 0 24 24"><path d="M12 3l6 6-6 12-6-12z"/><circle cx="12" cy="10" r="2.4"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 2l8 3v6c0 5-3.4 9.2-8 11-4.6-1.8-8-6-8-11V5z"/></symbol>
+  <symbol id="i-rad" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.5"/><path d="M12 9.5V3M12 14.5V21M9.8 10.7L4.5 5.8M14.2 13.3l5.3 4.9M14.2 10.7l5.3-4.9M9.8 13.3L4.5 18.2"/></symbol>
+  <symbol id="i-crown" viewBox="0 0 24 24"><path d="M3 18h18M4 18l-1-9 5 4 4-8 4 8 5-4-1 9"/></symbol>
+  <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="M12 7v10"/></symbol>
+  <symbol id="i-muscle" viewBox="0 0 24 24"><path d="M4 14c3-6 8-8 12-7 2 .5 3 2 2 3.5-.4.6-1.2.7-2 .4l-2-.8c-1-.4-2 .2-2.4 1l-.8 1.6c-.5 1-1.7 1.4-2.7 1L4 14z"/></symbol>
+  <symbol id="i-spiral" viewBox="0 0 24 24"><path d="M12 12a3 3 0 1 1 3 3 6 6 0 0 1-6-6 9 9 0 0 1 9-9"/></symbol>
+  <symbol id="i-scope" viewBox="0 0 24 24"><circle cx="6" cy="12" r="4"/><path d="M9.5 10.5L20 4l1.5 2.5L11 13z"/><path d="M14 9l3 5"/></symbol>
+  <symbol id="i-comet" viewBox="0 0 24 24"><circle cx="16" cy="8" r="5"/><path d="M12 12L3 21M15 13l-4 8M19 11l-3 6"/></symbol>
+  <symbol id="i-dragon" viewBox="0 0 24 24"><path d="M3 16l4-5 3 3 3-6 4 5 4-2"/><path d="M19 15l2 3-4 1"/></symbol>
+  <symbol id="i-galaxy" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-dasharray="3 3"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="7" r="1"/><circle cx="5" cy="15" r="1"/></symbol>
+  <symbol id="i-void" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5" fill="currentColor" stroke="none"/><path d="M12 3a9 9 0 0 1 8.5 6"/></symbol>
+  <symbol id="i-weight" viewBox="0 0 24 24"><rect x="2" y="9" width="5" height="6" rx="2"/><rect x="17" y="9" width="5" height="6" rx="2"/><path d="M7 12h10"/></symbol>
+  <symbol id="i-wheel" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2"/><path d="M12 3v7M12 14v7M3 12h7M14 12h7"/></symbol>
+  <symbol id="i-bomb" viewBox="0 0 24 24"><circle cx="11" cy="14" r="7"/><path d="M15 9l2-3 3 1-1 3"/></symbol>
+  <symbol id="i-hands" viewBox="0 0 24 24"><path d="M6 13V8a1.5 1.5 0 0 1 3 0v4M9 12V6.5a1.5 1.5 0 0 1 3 0V12M12 12V7.5a1.5 1.5 0 0 1 3 0V14a7 7 0 0 1-7 7 6 6 0 0 1-5-3"/></symbol>
+  <symbol id="i-crystal" viewBox="0 0 24 24"><path d="M12 2l7 6-7 14L5 8z"/><path d="M5 8h14M12 2v20"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-inf" viewBox="0 0 24 24"><path d="M12 12c-2-3-3.5-4.5-5.5-4.5A4.5 4.5 0 0 0 2 12c0 2.5 2 4.5 4.5 4.5C8.5 16.5 10 15 12 12zm0 0c2-3 3.5-4.5 5.5-4.5A4.5 4.5 0 0 1 22 12c0 2.5-2 4.5-4.5 4.5C15.5 16.5 14 15 12 12z"/></symbol>
+  <symbol id="i-dna" viewBox="0 0 24 24"><path d="M7 3c0 6 10 6 10 12M17 3c0 6-10 6-10 12M8 6h8M8 18h8"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.3.9-4.5 4.4 1 6.1-5.5-2.9-5.5 2.9 1-6.1L3 9.5l6.3-.9z"/></symbol>
+  <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M8 4h8v6a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 3M16 6h3a3 3 0 0 1-3 3M12 14v4M9 21h6"/></symbol>
+  <symbol id="i-medal" viewBox="0 0 24 24"><circle cx="12" cy="15" r="6"/><path d="M9 9L6 2h12l-3 7"/></symbol>
+  <symbol id="i-arrows" viewBox="0 0 24 24"><path d="M12 3v18M8 7l4-4 4 4M8 17l4 4 4-4"/></symbol>
+  <symbol id="i-cat" viewBox="0 0 24 24"><circle cx="12" cy="13" r="7"/><path d="M5 6l1 5 3-2M19 6l-1 5-3-2"/><circle cx="9.7" cy="13" r="1" fill="currentColor"/><circle cx="14.3" cy="13" r="1" fill="currentColor"/><path d="M12 16v1"/></symbol>
+  <symbol id="i-triple" viewBox="0 0 24 24"><circle cx="8" cy="8" r="4"/><circle cx="16" cy="8" r="4"/><circle cx="12" cy="16" r="4"/></symbol>
+  <symbol id="i-chevrons" viewBox="0 0 24 24"><path d="M6 8l6 4-6 4M13 8l6 4-6 4"/></symbol>
+  <symbol id="i-snow" viewBox="0 0 24 24"><path d="M12 2v20M4 7l16 10M20 7L4 17"/><path d="M9 4l3 3 3-3M9 20l3-3 3 3"/></symbol>
+  <symbol id="i-gift" viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="11" rx="2"/><path d="M3 13h18M12 9v11M12 9S9 4 7 6s5 3 5 3zm0 0s3-5 5-3-5 3-5 3z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></symbol>
+  <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 9l5 6M22 9l-5 6"/></symbol>
+  <symbol id="i-reset" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.5-5.8"/><path d="M20 4v5h-5"/></symbol>
+</svg>
+
+<header>
+  <div class="topbar">
+    <div class="tb glass"><svg class="ic sm"><use href="#i-coin"/></svg><b id="coinStat">0</b><span>коины</span></div>
+    <div class="tb glass tk"><svg class="ic sm"><use href="#i-gem"/></svg><b id="tkStat">0</b><span>тикоины</span></div>
+  </div>
+  <div class="score" id="score">0</div>
+  <div class="stats">
+    <div class="chip"><svg class="ic sm"><use href="#i-hand"/></svg><b id="perClick">1</b>/тык</div>
+    <div class="chip"><svg class="ic sm"><use href="#i-gear"/></svg><b id="perSec">0</b>/сек</div>
+    <div class="chip"><svg class="ic sm"><use href="#i-target"/></svg><b id="critStat">5%</b></div>
+    <div class="chip"><svg class="ic sm"><use href="#i-burst"/></svg><b id="critPower">×5</b></div>
+    <div class="chip"><svg class="ic sm"><use href="#i-hand"/></svg><b id="cpsStat">0</b>клик/с</div>
+    <div class="chip" id="luckyChip" hidden><svg class="ic sm"><use href="#i-dice"/></svg><b id="luckyStat">0%</b></div>
+  </div>
+  <div class="tools">
+    <button class="btn" id="sound" type="button" title="Звук"><svg class="ic sm"><use href="#i-sound" id="sndIcon"/></svg></button>
+    <button class="btn" id="reset" type="button" title="Сброс"><svg class="ic sm"><use href="#i-reset"/></svg></button>
+  </div>
+</header>
+
+<main>
+  <section id="panelTap" class="panel">
+    <div id="stage">
+      <div class="halo"></div>
+      <button class="tik" id="tik" aria-label="Тыкать">
+        <span class="ring"></span>
+        <span class="ring r2"></span>
+        <span class="photo"><img class="face" id="face" alt="котик" draggable="false"></span>
+      </button>
+    </div>
+    <section id="shop"></section>
+  </section>
+
+  <section id="panelAch" class="panel">
+    <div class="phead">
+      <div class="ttl"><svg class="ic sm"><use href="#i-trophy"/></svg>Достижения <b id="achCount">0 / 100</b></div>
+      <div class="gold"><svg class="ic sm"><use href="#i-coin"/></svg><span id="achGold">0</span></div>
+    </div>
+    <div class="achBar"><i id="achBar"></i></div>
+    <div id="achList" class="scroll list"></div>
+  </section>
+
+  <section id="panelShop" class="panel">
+    <div class="phead">
+      <div class="ttl"><svg class="ic sm"><use href="#i-coin"/></svg>Лавка тикоинов</div>
+      <div class="gold"><svg class="ic sm"><use href="#i-coin"/></svg><span id="shopGold">0</span></div>
+    </div>
+    <div class="tkTimer glass">
+      <svg class="ic sm"><use href="#i-gear"/></svg>
+      <span>Следующий тикоин через</span><b id="tkTimer">02:30</b>
+    </div>
+    <div id="goldList" class="scroll list"></div>
+  </section>
+</main>
+
+<nav class="dock" id="dock">
+  <span class="ind" id="dockInd"></span>
+  <button class="tab active" type="button" data-tab="tap"><svg class="ic"><use href="#i-hand"/></svg>Тык</button>
+  <button class="tab" type="button" data-tab="ach"><svg class="ic"><use href="#i-trophy"/></svg>Достижения <em class="badge" id="achBadge">0/100</em></button>
+  <button class="tab" type="button" data-tab="shop"><svg class="ic"><use href="#i-coin"/></svg>Лавка <em class="badge" id="goldBadge">0</em></button>
+</nav>
+
+<div id="toasts"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  const KEY = 'tikaylo.save.v2';
+  const SND_KEY = 'tikaylo.sound';
+
+  /* ================= улучшения (обычные) ================= */
+  const UPS = [
+    { id:'finger',  ico:'i-hand',   name:'Крепкий палец',    desc:'+1 к тыку',                     base:25,           growth:1.30, kind:'tap',   val:1 },
+    { id:'auto',    ico:'i-bot',    name:'Автотыкалка',      desc:'+1 в секунду',                  base:200,          growth:1.32, kind:'ps',    val:1 },
+    { id:'turbo',   ico:'i-fist',   name:'Турбо-палец',      desc:'+3 к тыку',                     base:1500,         growth:1.34, kind:'tap',   val:3 },
+    { id:'crit',    ico:'i-target', name:'Крит-модуль',      desc:'+2% шанса крита',               base:2500,         growth:1.42, kind:'crit',  val:0.02, max:15 },
+    { id:'bone',    ico:'i-dice',   name:'Кость',            desc:'+5% шанс двойного тыка',        base:5000,         growth:1.45, kind:'lucky', val:0.05, max:20 },
+    { id:'robot',   ico:'i-arm',    name:'Робо-рука',        desc:'+3 в секунду',                  base:9000,         growth:1.36, kind:'ps',    val:3 },
+    { id:'luck',    ico:'i-clover', name:'Счастливая лапка', desc:'+0.5% шанса крита',             base:20000,        growth:1.55, kind:'crit',  val:0.005, max:40 },
+    { id:'mult',    ico:'i-burst',  name:'Усилитель',        desc:'+15% ко всему',                 base:70000,        growth:1.75, kind:'mult',  val:0.15 },
+    { id:'critpow', ico:'i-fire',   name:'Огненный тык',     desc:'+1 к силе крита',               base:250000,       growth:2.20, kind:'cpow',  val:1, max:20 },
+    { id:'tapPct',  ico:'i-chartup',name:'Разгон',           desc:'+10% к тыку',                   base:400000,       growth:1.80, kind:'tapadd', val:0.10, max:20 },
+    { id:'factory', ico:'i-factory',name:'Тык-фабрика',      desc:'+15 в секунду',                 base:600000,       growth:1.45, kind:'ps',    val:15 },
+    { id:'psPct',   ico:'i-chartdown',name:'Разгон пассива',  desc:'+10% к пассиву',                base:700000,       growth:1.80, kind:'psadd', val:0.10, max:20 },
+    { id:'charms',  ico:'i-beads',  name:'Оберег',           desc:'+1% шанса крита',               base:500000,       growth:1.60, kind:'crit',  val:0.01, max:30 },
+    { id:'gem',     ico:'i-gem',    name:'Драконья кровь',   desc:'+20% ко всему',                 base:3000000,      growth:1.80, kind:'mult',  val:0.20 },
+    { id:'tapx2',   ico:'i-hands',  name:'Двойной тык',      desc:'×2 к тыку',                     base:2500000,      growth:3.00, kind:'tapx',  val:2, max:10 },
+    { id:'combo',   ico:'i-link',   name:'Комбо',            desc:'+1% к тыку за каждый апгрейд',  base:5000000,      growth:2.20, kind:'comp1', val:0.01, max:10 },
+    { id:'drill',   ico:'i-bit',    name:'Алмазный бур',     desc:'+40 к тыку',                    base:6000000,      growth:1.40, kind:'tap',   val:40 },
+    { id:'secx2',   ico:'i-bolt',   name:'Ускорение',        desc:'×2 к пассиву',                  base:12000000,     growth:3.20, kind:'psx',   val:2, max:10 },
+    { id:'callus',  ico:'i-paw',    name:'Мозоли',           desc:'+6 к тыку',                     base:20000000,     growth:1.36, kind:'tap',   val:6 },
+    { id:'charm2',  ico:'i-amulet', name:'Талисман',         desc:'+8% шанс двойного тыка',        base:80000000,     growth:1.50, kind:'lucky', val:0.08, max:15 },
+    { id:'synergy', ico:'i-gear',   name:'Синергия',         desc:'+2% ко всему за автотыкалку',   base:200000000,    growth:2.30, kind:'comp2', val:0.02, max:8 },
+    { id:'steel',   ico:'i-shield', name:'Стальные кулаки',  desc:'+15 к тыку',                    base:300000000,    growth:1.38, kind:'tap',   val:15 },
+    { id:'reactor', ico:'i-rad',    name:'Реактор',          desc:'+50 в секунду',                 base:2000000000,   growth:1.50, kind:'ps',    val:50 },
+    { id:'crown',   ico:'i-crown',  name:'Царская корона',   desc:'+30% ко всему',                 base:1500000000,   growth:1.85, kind:'mult',  val:0.30 },
+    { id:'greed',   ico:'i-coin',   name:'Жадность',         desc:'+5% к пассиву за множитель',    base:1000000000,   growth:2.40, kind:'comp3', val:0.05, max:8 },
+    { id:'tapx3',   ico:'i-muscle', name:'Тройной рывок',    desc:'×3 к тыку',                     base:5000000000,   growth:3.40, kind:'tapx',  val:3, max:8 },
+    { id:'secx3',   ico:'i-spiral', name:'Вихрь',            desc:'×3 к пассиву',                  base:15000000000,  growth:3.60, kind:'psx',   val:3, max:8 },
+    { id:'hunter',  ico:'i-scope',  name:'Охотник',          desc:'+25% к силе крита за крит-апгрейд', base:30000000000, growth:2.10, kind:'comp4', val:0.25, max:10 },
+    { id:'meteor',  ico:'i-comet',  name:'Метеор',           desc:'+2% шанса крита',               base:50000000000,  growth:1.70, kind:'crit',  val:0.02, max:20 },
+    { id:'dragon',  ico:'i-dragon', name:'Драконий коготь',  desc:'+3 к силе крита',               base:40000000000,  growth:2.30, kind:'cpow',  val:3, max:15 },
+    { id:'mega',    ico:'i-galaxy', name:'Космический кот',  desc:'×2 ко всему',                   base:150000000000, growth:4.00, kind:'mega',  val:2, max:8 },
+    { id:'voidh',   ico:'i-void',   name:'Чёрная дыра',      desc:'+200 в секунду',                base:800000000000, growth:1.55, kind:'ps',    val:200 },
+    { id:'tapx5',   ico:'i-weight', name:'Пятикратный удар', desc:'×5 к тыку',                     base:2000000000000,growth:3.80, kind:'tapx',  val:5, max:6 },
+    { id:'secx5',   ico:'i-snow',   name:'Ураган',           desc:'×5 к пассиву',                  base:3000000000000,growth:4.00, kind:'psx',   val:5, max:6 },
+    { id:'critx2',  ico:'i-wheel',  name:'Удвоенный крит',   desc:'×2 к шансу крита',              base:900000000000, growth:3.40, kind:'critx', val:2, max:6 },
+    { id:'cpowx2',  ico:'i-bomb',   name:'Двойная сила',     desc:'×2 к силе крита',               base:700000000000, growth:3.40, kind:'cpowx', val:2, max:6 },
+    { id:'tapx4',   ico:'i-hands',  name:'Четверной тык',    desc:'×4 к тыку',                     base:12000000000000,growth:3.60,kind:'tapx',  val:4, max:6 },
+    { id:'psx4',    ico:'i-crystal',name:'Кристальный поток',desc:'×4 к пассиву',                 base:12000000000000,growth:3.60,kind:'psx',   val:4, max:6 },
+    { id:'galaxy',  ico:'i-star',   name:'Галактика',        desc:'×3 ко всему',                   base:50000000000000,growth:4.20,kind:'mega',  val:3, max:6 },
+    { id:'titan',   ico:'i-eye',    name:'Титан',            desc:'+10 к силе крита',              base:5000000000000, growth:2.40, kind:'cpow',  val:10, max:10 },
+    { id:'infinity',ico:'i-inf',    name:'Бесконечность',    desc:'+50% ко всему',                 base:10000000000000,growth:1.95,kind:'mult',  val:0.50 },
+    { id:'quantum', ico:'i-dna',    name:'Квант',            desc:'×5 ко всему',                   base:100000000000000,growth:4.50,kind:'mega', val:5, max:5 },
+    { id:'star',    ico:'i-star',   name:'Звёздная мощь',    desc:'×10 к тыку',                    base:500000000000000,growth:5.00,kind:'tapx', val:10, max:5 },
+    { id:'boost',   ico:'i-trophy', name:'Абсолютный рекорд',desc:'+100% к тыку',                  base:5000000000000000,growth:4.50,kind:'tapadd',val:1.0,max:5 },
+    { id:'boost2',  ico:'i-medal',  name:'Абсолютный пассив',desc:'+100% к пассиву',               base:20000000000000000,growth:4.50,kind:'psadd',val:1.0,max:5 },
+    { id:'overflow',ico:'i-arrows', name:'Переполнение',     desc:'×100 ко всему',                 base:1000000000000000000,growth:6.00,kind:'mega',val:100,max:4 },
+    { id:'catgod',  ico:'i-cat',    name:'Бог-Кот',          desc:'×1000 ко всему',                base:1000000000000000000000,growth:8.00,kind:'mega',val:1000,max:3 },
+    { id:'critx3',  ico:'i-triple', name:'Тройной крит',     desc:'×3 к шансу крита',              base:5000000000000000,growth:4.20,kind:'critx', val:3, max:5 },
+    { id:'cpowx3',  ico:'i-chevrons',name:'Тройная сила',    desc:'×3 к силе крита',               base:4000000000000000,growth:4.20,kind:'cpowx', val:3, max:5 },
+    { id:'tapx20',  ico:'i-paw',    name:'Кот-ураган',       desc:'×20 к тыку',                    base:100000000000000000,growth:5.50,kind:'tapx', val:20,max:4 }
+  ];
+
+  /* ================= лавка тикоинов (15 улучшений) ================= */
+  const GSHOP = [
+    { id:'g_paw',   ico:'i-paw',    name:'Тикоинная лапа',      desc:'+50% к тыку',            gold:1,   kind:'gtap',  val:0.5 },
+    { id:'g_bot',   ico:'i-bot',    name:'Тикоинный автомат',   desc:'+5 в секунду',           gold:2,   kind:'gps',   val:5 },
+    { id:'g_apple', ico:'i-star',   name:'Тикоинное яблочко',   desc:'+3% шанса крита',        gold:3,   kind:'gcrit', val:0.03 },
+    { id:'g_fire',  ico:'i-fire',   name:'Тикоинный огонь',     desc:'+10 к силе крита',       gold:4,  kind:'gcpow', val:10 },
+    { id:'g_crown', ico:'i-crown',  name:'Тикоинная корона',    desc:'+25% ко всему',          gold:5,  kind:'gglob', val:0.25 },
+    { id:'g_gem',   ico:'i-gem',    name:'Алмазная когтя',    desc:'+100% к тыку',           gold:7,  kind:'gtap',  val:1.0 },
+    { id:'g_bolt',  ico:'i-bolt',   name:'Тикоинный разряд',    desc:'×2 к пассиву',           gold:9,  kind:'gpsm',  val:2 },
+    { id:'g_dragon',ico:'i-dragon', name:'Драконья удача',    desc:'+10% двойного тыка',     gold:11,  kind:'glucky',val:0.10 },
+    { id:'g_galaxy',ico:'i-galaxy', name:'Тикоинная галактика', desc:'×2 ко всему',            gold:14,  kind:'gglobx',val:2 },
+    { id:'g_star',  ico:'i-star',   name:'Звезда удачи',      desc:'+5% шанса крита',        gold:17,  kind:'gcrit', val:0.05 },
+    { id:'g_paw2',  ico:'i-hands',  name:'Лапа бога',         desc:'×3 к тыку',              gold:21,  kind:'gtapx', val:3 },
+    { id:'g_cup',   ico:'i-trophy', name:'Кубок чемпионов',   desc:'+100% к пассиву',        gold:26,  kind:'gpsp',  val:1.0 },
+    { id:'g_cat',   ico:'i-cat',    name:'Кот-император',     desc:'×3 ко всему',            gold:33,  kind:'gglobx',val:3 },
+    { id:'g_inf',   ico:'i-inf',    name:'Тикоинная бесконечность', desc:'×10 ко всему',        gold:42, kind:'gglobx',val:10 },
+    { id:'g_dice',  ico:'i-dice',   name:'Кот-ураган',        desc:'×5 к тыку',              gold:55, kind:'gtapx', val:5 }
+  ];
+
+  const S = {
+    score: 0, total: 0, clicks: 0, crits: 0, purchases: 0, luckyHits: 0,
+    gold: 0, goldAcc: 0, levels: {}, glevels: {}, ach: {}, bonus: {}, last: 0
+  };
+
+  const TK_SEC = 150; // тикоин каждые 2 минуты 30 секунд
+
+  const $ = function (id) { return document.getElementById(id); };
+  // localStorage с запасным хранилищем в памяти (file:// и WebView)
+  const LS = (function () {
+    const mem = {};
+    let ok = true;
+    try { localStorage.setItem('__t', '1'); localStorage.removeItem('__t'); } catch (e) { ok = false; }
+    return {
+      get: function (k) {
+        try { const v = ok ? localStorage.getItem(k) : mem[k]; return v === undefined ? null : v; }
+        catch (e) { return mem[k] === undefined ? null : mem[k]; }
+      },
+      set: function (k, v) {
+        try { if (ok) localStorage.setItem(k, v); else mem[k] = v; } catch (e) { mem[k] = v; }
+      },
+      remove: function (k) {
+        try { if (ok) localStorage.removeItem(k); else delete mem[k]; } catch (e) { delete mem[k]; }
+      }
+    };
+  })();
+  const scoreEl = $('score'), pcEl = $('perClick'), psEl = $('perSec'),
+        critEl = $('critStat'), cpEl = $('critPower'), lkEl = $('luckyStat'),
+        luckyChip = $('luckyChip'),
+        coinStat = $('coinStat'), tkStat = $('tkStat'), tkTimer = $('tkTimer'),
+        cpsEl = $('cpsStat'),
+        shopEl = $('shop'), goldListEl = $('goldList'),
+        stage = $('stage'), tik = $('tik'), toastsEl = $('toasts'),
+        achList = $('achList'), achBadge = $('achBadge'), achCount = $('achCount'),
+        achBar = $('achBar'), achGold = $('achGold'), shopGold = $('shopGold'), goldBadge = $('goldBadge');
+
+  /* ================= числа ================= */
+  const SUF = [['квдр',1e15],['трлн',1e12],['млрд',1e9],['млн',1e6],['тыс',1e3]];
+  function fmt(n) {
+    if (!isFinite(n)) return '∞';
+    if (n < 0) n = 0;
+    if (n < 1000) return n < 10 && n % 1 !== 0 ? n.toFixed(1) : String(Math.floor(n));
+    for (let i = 0; i < SUF.length; i++) {
+      const v = SUF[i][1];
+      if (n >= v) {
+        const x = n / v;
+        return (x < 10 ? x.toFixed(2) : x < 100 ? x.toFixed(1) : Math.floor(x)) + ' ' + SUF[i][0];
+      }
+    }
+    return n.toExponential(1).replace('e+', 'e');
+  }
+  function fmtMult(n) {
+    if (n < 10) return n % 1 === 0 ? String(n) : n.toFixed(1);
+    return fmt(n);
+  }
+  function fmtTime(sec) {
+    if (sec < 90) return Math.round(sec) + ' сек';
+    if (sec < 5400) return Math.round(sec / 60) + ' мин';
+    return (sec / 3600).toFixed(1) + ' ч';
+  }
+  function icon(id, cls) {
+    return '<svg class="ic' + (cls ? ' ' + cls : '') + '"><use href="#' + id + '"/></svg>';
+  }
+
+  /* ================= характеристики ================= */
+  function stats() {
+    const g = function (id) { return S.levels[id] || 0; };
+    const gl = function (id) { return S.glevels[id] || 0; };
+    let tapFlat = 0, psFlat = 0, critAdd = 0, cpowAdd = 0, multAdd = 0, luckyAdd = 0;
+    let tapAdd = 0, psAdd = 0;
+    let tapX = 1, psX = 1, megaX = 1, critX = 1, cpowX = 1;
+    let totalLevels = 0, psLevels = 0, multLevels = 0, critLevels = 0, distinct = 0;
+    let combo = 0, synergy = 0, greed = 0, hunter = 0;
+
+    for (let i = 0; i < UPS.length; i++) {
+      const u = UPS[i], lvl = g(u.id);
+      if (!lvl) continue;
+      totalLevels += lvl; distinct++;
+      switch (u.kind) {
+        case 'tap':    tapFlat += u.val * lvl; break;
+        case 'ps':     psFlat  += u.val * lvl; psLevels += lvl; break;
+        case 'crit':   critAdd += u.val * lvl; critLevels += lvl; break;
+        case 'cpow':   cpowAdd += u.val * lvl; critLevels += lvl; break;
+        case 'mult':   multAdd += u.val * lvl; multLevels += lvl; break;
+        case 'lucky':  luckyAdd += u.val * lvl; break;
+        case 'tapx':   tapX  *= Math.pow(u.val, lvl); multLevels += lvl; break;
+        case 'psx':    psX   *= Math.pow(u.val, lvl); multLevels += lvl; break;
+        case 'mega':   megaX *= Math.pow(u.val, lvl); multLevels += lvl; break;
+        case 'critx':  critX *= Math.pow(u.val, lvl); critLevels += lvl; break;
+        case 'cpowx':  cpowX *= Math.pow(u.val, lvl); critLevels += lvl; break;
+        case 'tapadd': tapAdd += u.val * lvl; break;
+        case 'psadd':  psAdd  += u.val * lvl; break;
+        case 'comp1':  combo = lvl; break;
+        case 'comp2':  synergy = lvl; break;
+        case 'comp3':  greed = lvl; break;
+        case 'comp4':  hunter = lvl; break;
+      }
+    }
+
+    // лавка тикоинов
+    let gTapPct = 0, gPsFlat = 0, gPsPct = 0, gCrit = 0, gCpow = 0, gGlob = 0, gLucky = 0;
+    let gTapX = 1, gPsX = 1, gGlobX = 1;
+    for (let i = 0; i < GSHOP.length; i++) {
+      const u = GSHOP[i], lvl = gl(u.id);
+      if (!lvl) continue;
+      switch (u.kind) {
+        case 'gtap':   gTapPct += u.val * lvl; break;
+        case 'gps':    gPsFlat += u.val * lvl; break;
+        case 'gpsp':   gPsPct += u.val * lvl; break;
+        case 'gcrit':  gCrit += u.val * lvl; break;
+        case 'gcpow':  gCpow += u.val * lvl; break;
+        case 'gglob':  gGlob += u.val * lvl; break;
+        case 'glucky': gLucky += u.val * lvl; break;
+        case 'gtapx':  gTapX *= Math.pow(u.val, lvl); break;
+        case 'gpsm':   gPsX *= Math.pow(u.val, lvl); break;
+        case 'gglobx': gGlobX *= Math.pow(u.val, lvl); break;
+      }
+    }
+
+    // бонусы за достижения
+    const B = S.bonus || {};
+    const bMult = 1 + (B.mult || 0), bTap = 1 + (B.tap || 0), bPs = 1 + (B.ps || 0);
+
+    const mult = (1 + multAdd) * megaX * (1 + gGlob) * gGlobX * bMult;
+    let tap = (1 + tapFlat) * mult * tapX * gTapX * (1 + tapAdd) * (1 + gTapPct) * bTap;
+    let ps  = psFlat * mult * psX * gPsX * (1 + psAdd) * (1 + gPsPct) * bPs + gPsFlat * (1 + gPsPct) * bPs;
+    if (combo)   tap *= (1 + 0.01 * combo * totalLevels);
+    if (synergy) { const m = 1 + 0.02 * synergy * psLevels; tap *= m; ps *= m; }
+    if (greed)   ps  *= (1 + 0.05 * greed * multLevels);
+
+    return {
+      tap: tap,
+      ps: ps,
+      mult: mult,
+      critChance: Math.min(0.9, ((0.05 + critAdd) * critX * gGlobX + gCrit + (B.crit || 0))),
+      critPower: ((5 + cpowAdd) * cpowX * megaX * gGlobX * (1 + gGlob)) + gCpow + (B.cpow || 0),
+      lucky: Math.min(0.8, luckyAdd + gLucky + (B.lucky || 0)),
+      totalLevels: totalLevels,
+      distinct: distinct
+    };
+  }
+
+  function cost(u) {
+    return Math.ceil(u.base * Math.pow(u.growth, S.levels[u.id] || 0));
+  }
+  function goldCost(u) {
+    const lvl = S.glevels[u.id] || 0;
+    return u.gold + Math.floor(u.gold * 0.5 * lvl);
+  }
+
+  /* ================= звук ================= */
+  const Sound = {
+    ctx: null, on: true,
+    init: function () {
+      if (!this.ctx) {
+        try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { this.ctx = null; }
+      }
+      if (this.ctx && this.ctx.state === 'suspended') { try { this.ctx.resume(); } catch (e) {} }
+    },
+    noise: function () {
+      const ctx = this.ctx;
+      if (ctx._nb) return ctx._nb;
+      const len = Math.floor(ctx.sampleRate * 0.25);
+      const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2);
+      ctx._nb = buf;
+      return buf;
+    },
+    tone: function (freq, dur, type, vol, slideTo) {
+      const ctx = this.ctx;
+      if (!ctx) return;
+      const t = ctx.currentTime;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol), t + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      const o = ctx.createOscillator();
+      o.type = type || 'sine';
+      o.frequency.setValueAtTime(freq, t);
+      if (slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(20, slideTo), t + dur);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(t); o.stop(t + dur + 0.02);
+    },
+    click: function (power) {
+      if (!this.on || !this.ctx) return;
+      const ctx = this.ctx, t = ctx.currentTime;
+      const f = 170 + Math.min(640, Math.pow(power, 0.32) * 14);
+      this.tone(f, 0.09, 'triangle', 0.20, f * 0.62);
+      const n = ctx.createBufferSource(); n.buffer = this.noise();
+      const nf = ctx.createBiquadFilter();
+      nf.type = 'bandpass'; nf.frequency.value = 1800; nf.Q.value = 0.7;
+      const ng = ctx.createGain();
+      ng.gain.setValueAtTime(0.09, t);
+      ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+      n.connect(nf); nf.connect(ng); ng.connect(ctx.destination);
+      n.start(t); n.stop(t + 0.06);
+    },
+    crit: function () {
+      if (!this.on || !this.ctx) return;
+      const ctx = this.ctx, t = ctx.currentTime;
+      this.tone(520, 0.30, 'sawtooth', 0.10, 1250);
+      this.tone(790, 0.34, 'sine', 0.14, 1900);
+      this.tone(1560, 0.22, 'triangle', 0.07, 2350);
+      const n = ctx.createBufferSource(); n.buffer = this.noise();
+      const nf = ctx.createBiquadFilter(); nf.type = 'highpass'; nf.frequency.value = 2400;
+      const ng = ctx.createGain();
+      ng.gain.setValueAtTime(0.10, t);
+      ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+      n.connect(nf); nf.connect(ng); ng.connect(ctx.destination);
+      n.start(t); n.stop(t + 0.2);
+    },
+    buy: function () {
+      if (!this.on || !this.ctx) return;
+      this.tone(660, 0.12, 'sine', 0.16);
+      const self = this;
+      setTimeout(function () { self.tone(990, 0.20, 'sine', 0.14); }, 90);
+    },
+    deny: function () {
+      if (!this.on || !this.ctx) return;
+      this.tone(160, 0.15, 'square', 0.07, 90);
+    },
+    tick: function () {
+      if (!this.on || !this.ctx) return;
+      this.tone(1450, 0.05, 'sine', 0.030);
+    },
+    lucky: function () {
+      if (!this.on || !this.ctx) return;
+      this.tone(700, 0.10, 'triangle', 0.13, 1400);
+    },
+    ach: function () {
+      if (!this.on || !this.ctx) return;
+      const self = this;
+      this.tone(880, 0.13, 'sine', 0.13);
+      setTimeout(function () { self.tone(1320, 0.24, 'sine', 0.11); }, 100);
+    }
+  };
+
+  const sndBtn = $('sound');
+  function setSound(on) {
+    Sound.on = on;
+    sndBtn.querySelector('use').setAttribute('href', on ? '#i-sound' : '#i-mute');
+    sndBtn.classList.toggle('off', !on);
+    try { LS.set(SND_KEY, on ? '1' : '0'); } catch (e) {}
+  }
+  sndBtn.addEventListener('click', function () {
+    setSound(!Sound.on);
+    if (Sound.on) { Sound.init(); Sound.buy(); }
+  });
+
+  /* ================= магазин (обычный) ================= */
+  const els = {};
+  function buildShop() {
+    shopEl.innerHTML = '';
+    UPS.forEach(function (u) {
+      const b = document.createElement('button');
+      b.className = 'up';
+      b.type = 'button';
+      b.innerHTML =
+        '<span class="ico">' + icon(u.ico) + '</span>' +
+        '<span class="txt"><span class="nm">' + u.name + ' <span class="lvl"></span></span>' +
+        '<span class="ds">' + u.desc + '</span></span>' +
+        '<span class="cost"></span>';
+      b.addEventListener('pointerdown', function (e) { e.preventDefault(); buy(u.id); });
+      shopEl.appendChild(b);
+      els[u.id] = { btn: b, cost: b.querySelector('.cost'), lvl: b.querySelector('.lvl') };
+    });
+  }
+
+  function buy(id) {
+    const u = UPS.filter(function (x) { return x.id === id; })[0];
+    if (!u) return;
+    const lvl = S.levels[id] || 0;
+    if (u.max && lvl >= u.max) return;
+    const c = cost(u);
+    if (S.score < c) {
+      Sound.init(); Sound.deny();
+      els[id].btn.animate(
+        [{ transform: 'translateX(0)' }, { transform: 'translateX(-5px)' },
+         { transform: 'translateX(5px)' }, { transform: 'translateX(0)' }],
+        { duration: 180, easing: 'ease-out' }
+      );
+      return;
+    }
+    S.score -= c;
+    S.levels[id] = lvl + 1;
+    S.purchases++;
+    Sound.init(); Sound.buy();
+    if (navigator.vibrate) { try { navigator.vibrate(8); } catch (e) {} }
+    paint(stats(), true);
+    save();
+  }
+
+  /* ================= лавка тикоинов ================= */
+  const gels = {};
+  function buildGoldShop() {
+    goldListEl.innerHTML = '';
+    GSHOP.forEach(function (u) {
+      const b = document.createElement('button');
+      b.className = 'up gold';
+      b.type = 'button';
+      b.innerHTML =
+        '<span class="ico">' + icon(u.ico) + '</span>' +
+        '<span class="txt"><span class="nm">' + u.name + ' <span class="lvl"></span></span>' +
+        '<span class="ds">' + u.desc + '</span></span>' +
+        '<span class="cost"></span>';
+      b.addEventListener('pointerdown', function (e) { e.preventDefault(); buyGold(u.id); });
+      goldListEl.appendChild(b);
+      gels[u.id] = { btn: b, cost: b.querySelector('.cost'), lvl: b.querySelector('.lvl') };
+    });
+  }
+
+  function buyGold(id) {
+    const u = GSHOP.filter(function (x) { return x.id === id; })[0];
+    if (!u) return;
+    const lvl = S.glevels[id] || 0;
+    const c = goldCost(u);
+    if (S.gold < c) {
+      Sound.init(); Sound.deny();
+      gels[id].btn.animate(
+        [{ transform: 'translateX(0)' }, { transform: 'translateX(-5px)' },
+         { transform: 'translateX(5px)' }, { transform: 'translateX(0)' }],
+        { duration: 180, easing: 'ease-out' }
+      );
+      return;
+    }
+    S.gold -= c;
+    S.glevels[id] = lvl + 1;
+    Sound.init(); Sound.buy();
+    if (navigator.vibrate) { try { navigator.vibrate(8); } catch (e) {} }
+    toast('Куплено: ' + u.name, 'i-coin');
+    paint(stats(), true);
+    save();
+  }
+
+  /* ================= отрисовка ================= */
+  let cache = { s:'', pc:'', ps:'', cr:'', cp:'', lk:'', gd:'', cs:'', cpc:'' };
+  function paint(st, forceShop) {
+    const s = fmt(S.score);
+    if (s !== cache.s) { scoreEl.textContent = s; cache.s = s; }
+
+    const pc = fmt(st.tap);
+    if (pc !== cache.pc) { pcEl.textContent = pc; cache.pc = pc; }
+
+    const ps = fmt(st.ps);
+    if (ps !== cache.ps) { psEl.textContent = ps; cache.ps = ps; }
+
+    const cr = Math.round(st.critChance * 100) + '%';
+    if (cr !== cache.cr) { critEl.textContent = cr; cache.cr = cr; }
+
+    const cp = '×' + fmtMult(st.critPower);
+    if (cp !== cache.cp) { cpEl.textContent = cp; cache.cp = cp; }
+
+    const lk = Math.round(st.lucky * 100) + '%';
+    if (lk !== cache.lk) {
+      lkEl.textContent = lk; cache.lk = lk;
+      luckyChip.hidden = st.lucky <= 0;
+    }
+
+    const gd = String(Math.floor(S.gold));
+    if (gd !== cache.gd) {
+      cache.gd = gd;
+      achGold.textContent = gd;
+      shopGold.textContent = gd;
+      goldBadge.textContent = gd;
+      if (tkStat) tkStat.textContent = gd;
+    }
+    const cs = fmt(S.score);
+    if (cs !== cache.cs) { if (coinStat) coinStat.textContent = cs; cache.cs = cs; }
+
+    const cpc = String(cpsNow);
+    if (cpc !== cache.cpc) { if (cpsEl) cpsEl.textContent = cpc; cache.cpc = cpc; }
+
+    for (let i = 0; i < UPS.length; i++) {
+      const u = UPS[i], e = els[u.id];
+      if (!e) continue;
+      const lvl = S.levels[u.id] || 0;
+      const c = cost(u);
+      const maxed = u.max && lvl >= u.max;
+      const visible = maxed || lvl > 0 || S.total >= u.base * 0.5 || i < 3;
+      const disp = visible ? '' : 'none';
+      if (e.btn.style.display !== disp) e.btn.style.display = disp;
+      if (!visible) continue;
+
+      const label = maxed ? 'МАКС' : fmt(c);
+      if (e.cost.textContent !== label) e.cost.textContent = label;
+
+      const lv = lvl > 0 ? 'ур. ' + lvl : '';
+      if (e.lvl.textContent !== lv) e.lvl.textContent = lv;
+
+      const cls = maxed ? 'up maxed' : (S.score >= c ? 'up can' : 'up poor');
+      if (e.btn.className !== cls) e.btn.className = cls;
+    }
+
+    for (let i = 0; i < GSHOP.length; i++) {
+      const u = GSHOP[i], e = gels[u.id];
+      if (!e) continue;
+      const lvl = S.glevels[u.id] || 0;
+      const c = goldCost(u);
+      const label = fmt(c);
+      if (e.cost.textContent !== label) e.cost.textContent = label;
+      const lv = lvl > 0 ? 'ур. ' + lvl : '';
+      if (e.lvl.textContent !== lv) e.lvl.textContent = lv;
+      const cls = S.gold >= c ? 'up gold can' : 'up gold poor';
+      if (e.btn.className !== cls) e.btn.className = cls;
+    }
+  }
+
+  /* ================= эффекты ================= */
+  function addFx(node) {
+    if (stage.childElementCount > 70) return;
+    stage.appendChild(node);
+    node.addEventListener('animationend', function () { node.remove(); });
+  }
+  function floatText(x, y, text, crit, lucky) {
+    const el = document.createElement('div');
+    el.className = 'float' + (crit ? ' crit' : '') + (lucky && !crit ? ' lucky' : '');
+    el.textContent = text;
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    addFx(el);
+  }
+  function ripple(x, y, crit) {
+    const el = document.createElement('div');
+    el.className = 'ripple' + (crit ? ' crit' : '');
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    addFx(el);
+  }
+  function sparks(x, y, n, crit) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const d = 40 + Math.random() * 70;
+      const el = document.createElement('div');
+      el.className = 'spark' + (crit ? ' crit' : '');
+      el.style.left = x + 'px';
+      el.style.top = y + 'px';
+      el.style.setProperty('--dx', (Math.cos(a) * d).toFixed(1) + 'px');
+      el.style.setProperty('--dy', (Math.sin(a) * d).toFixed(1) + 'px');
+      addFx(el);
+    }
+  }
+
+  /* ================= тык ================= */
+  function doTap(clientX, clientY, viaKey) {
+    const st = stats();
+    const crit = Math.random() < st.critChance;
+    const lucky = Math.random() < st.lucky;
+    let gain = st.tap;
+    if (crit) gain *= st.critPower;
+    if (lucky) gain *= 2;
+
+    S.score += gain;
+    S.total += gain;
+    S.clicks++;
+    tapsInSec++;
+    if (crit) S.crits++;
+    if (lucky) S.luckyHits++;
+
+    const r = stage.getBoundingClientRect();
+    const x = viaKey ? r.width / 2 : clientX - r.left;
+    const y = viaKey ? r.height / 2 : clientY - r.top;
+
+    floatText(x, y, '+' + fmt(gain) + (lucky ? ' ×2' : ''), crit, lucky);
+    ripple(x, y, crit);
+    sparks(x, y, crit ? 11 : lucky ? 9 : 5, crit);
+
+    Sound.init();
+    if (crit) Sound.crit();
+    else if (lucky) Sound.lucky();
+    else Sound.click(st.tap);
+
+    if (crit) {
+      stage.classList.remove('shake');
+      void stage.offsetWidth;
+      stage.classList.add('shake');
+      if (navigator.vibrate) { try { navigator.vibrate(14); } catch (e) {} }
+    } else if (navigator.vibrate) {
+      try { navigator.vibrate(4); } catch (e) {}
+    }
+
+    scoreEl.animate(
+      [{ transform: 'scale(1)' }, { transform: 'scale(1.07)' }, { transform: 'scale(1)' }],
+      { duration: 180, easing: 'ease-out' }
+    );
+
+    paint(stats());
+  }
+
+  tik.addEventListener('pointerdown', function (e) {
+    e.preventDefault();
+    tik.classList.add('hit');
+    clearTimeout(tik._hitT);
+    tik._hitT = setTimeout(function () { tik.classList.remove('hit'); }, 90);
+    doTap(e.clientX, e.clientY, false);
+  });
+  tik.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.code === 'Space' || e.code === 'Enter' || e.code === 'NumpadEnter') {
+      e.preventDefault();
+      tik.classList.add('hit');
+      setTimeout(function () { tik.classList.remove('hit'); }, 90);
+      doTap(0, 0, true);
+    }
+  });
+
+  /* ================= тосты ================= */
+  function toast(text, ico) {
+    const el = document.createElement('div');
+    el.className = 'toast glass';
+    el.innerHTML = (ico ? icon(ico, 'sm') : '') + '<span>' + text + '</span>';
+    toastsEl.appendChild(el);
+    el.addEventListener('animationend', function (ev) {
+      if (ev.animationName === 'tout') el.remove();
+    });
+    setTimeout(function () { el.remove(); }, 4000);
+  }
+
+  /* ================= достижения ================= */
+  /* тикоины дают только 15 самых сложных достижений */
+  function buildAchievements() {
+    const A = [];
+    const add = function (ico, name, desc, tk, bonus, test) {
+      A.push({ ico: ico, name: name, desc: desc, tk: tk || 0, bonus: bonus || null, test: test });
+    };
+    const N = function (n) { return fmt(n); };
+
+    [10, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000, 100000, 250000, 500000, 1000000].forEach(function (n) {
+      add('i-hand', 'Тыков: ' + N(n), 'Сделай ' + N(n) + ' тыков', n >= 1000000 ? 30 : 0, { tap: 0.002 },
+        function (s) { return s.clicks >= n; });
+    });
+    [100, 1000, 10000, 100000, 1e6, 1e7, 1e8, 1e9, 1e10, 1e12, 1e15].forEach(function (n) {
+      add('i-gem', 'Заработано: ' + N(n), 'Накопи всего ' + N(n), n >= 1e15 ? 30 : 0, { mult: 0.005 },
+        function (s) { return s.total >= n; });
+    });
+    [1, 10, 50, 100, 500, 1000, 5000].forEach(function (n) {
+      add('i-burst', 'Критов: ' + N(n), 'Поймай ' + N(n) + ' критических тыков', n >= 5000 ? 15 : 0, { crit: 0.005 },
+        function (s) { return s.crits >= n; });
+    });
+    [10, 100, 1000, 10000, 1e6, 1e9].forEach(function (n) {
+      add('i-bit', 'Сила тыка: ' + N(n), 'Тык должен бить на ' + N(n), n >= 1e9 ? 20 : 0, { tap: 0.02 },
+        function (s, st) { return st.tap >= n; });
+    });
+    [10, 100, 1000, 10000, 1e6, 1e9].forEach(function (n) {
+      add('i-factory', 'Пассив: ' + N(n) + '/сек', 'Пассивный доход ' + N(n) + ' в секунду', n >= 1e9 ? 20 : 0, { ps: 0.05 },
+        function (s, st) { return st.ps >= n; });
+    });
+    [0.1, 0.25, 0.5, 0.75].forEach(function (n) {
+      add('i-target', 'Крит ' + Math.round(n * 100) + '%', 'Шанс крита ' + Math.round(n * 100) + '%', n >= 0.75 ? 12 : 0, { crit: 0.01 },
+        function (s, st) { return st.critChance >= n; });
+    });
+    [10, 25, 50, 100, 1000].forEach(function (n) {
+      add('i-fire', 'Сила крита ×' + N(n), 'Крит должен бить в ' + N(n) + ' раз сильнее', n >= 1000 ? 15 : 0, { cpow: 2 },
+        function (s, st) { return st.critPower >= n; });
+    });
+    [0.1, 0.25, 0.5].forEach(function (n) {
+      add('i-dice', 'Двойной тык ' + Math.round(n * 100) + '%', 'Шанс двойного тыка ' + Math.round(n * 100) + '%', n >= 0.5 ? 10 : 0, { lucky: 0.02 },
+        function (s, st) { return st.lucky >= n; });
+    });
+    [1, 5, 10, 25, 50, 100, 200, 300, 400].forEach(function (n) {
+      add('i-chartup', 'Уровней: ' + N(n), 'Купи суммарно ' + N(n) + ' уровней улучшений', n >= 400 ? 25 : 0, { mult: 0.01 },
+        function (s, st) { return st.totalLevels >= n; });
+    });
+    [1, 5, 10, 25, 50].forEach(function (n) {
+      add('i-box', 'Улучшений: ' + N(n), 'Купи ' + N(n) + ' разных улучшений', n >= 50 ? 25 : 0, { tap: 0.02 },
+        function (s, st) { return st.distinct >= n; });
+    });
+    [['finger', 20, 0], ['catgod', 1, 30], ['turbo', 10, 0], ['quantum', 1, 0], ['auto', 15, 0],
+     ['robot', 8, 0], ['factory', 8, 0], ['crit', 5, 0], ['luck', 10, 0], ['mult', 8, 0],
+     ['mega', 3, 20], ['tapx2', 3, 0], ['secx2', 3, 0], ['critpow', 12, 0], ['tapx20', 1, 12],
+     ['overflow', 1, 15], ['galaxy', 3, 0], ['crown', 5, 0], ['boost', 1, 0], ['boost2', 1, 0]].forEach(function (p) {
+      const u = UPS.filter(function (x) { return x.id === p[0]; })[0];
+      add('i-star', u.name + ' ур. ' + p[1], 'Купи «' + u.name + '» ' + p[1] + ' ур.', p[2], { mult: 0.003 },
+        function (s) { return (s.levels[u.id] || 0) >= p[1]; });
+    });
+    [1, 10, 50, 100, 250].forEach(function (n) {
+      add('i-coin', 'Покупок: ' + N(n), 'Соверши ' + N(n) + ' покупок улучшений', n >= 250 ? 10 : 0, { mult: 0.003 },
+        function (s) { return s.purchases >= n; });
+    });
+    [1, 10, 100, 1000].forEach(function (n) {
+      add('i-clover', 'Двойных тыков: ' + N(n), 'Поймай ' + N(n) + ' двойных тыков', 0, { ps: 0.02 },
+        function (s) { return s.luckyHits >= n; });
+    });
+
+    return A;
+  }
+
+  const ACH = buildAchievements();
+  const achEls = [];
+
+  function rewardText(a) {
+    let t = a.tk ? '+' + a.tk + ' тикоинов' : '';
+    const b = a.bonus;
+    if (b) {
+      if (b.mult) t += ', +' + Math.round(b.mult * 100) + '% ко всему';
+      if (b.tap)  t += ', +' + Math.round(b.tap * 100) + '% к тыку';
+      if (b.ps)   t += ', +' + Math.round(b.ps * 100) + '% к пассиву';
+      if (b.crit) t += ', +' + Math.round(b.crit * 100) + '% к криту';
+      if (b.cpow) t += ', +' + b.cpow + ' к силе крита';
+      if (b.lucky) t += ', +' + Math.round(b.lucky * 100) + '% к двойному тыку';
+    }
+    if (!t) t = 'бонус к характеристикам';
+    return t;
+  }
+
+  function buildAchUI() {
+    achList.innerHTML = '';
+    ACH.forEach(function (a, i) {
+      const d = document.createElement('div');
+      d.className = 'achCard';
+      d.innerHTML =
+        '<span class="ico">' + icon(a.ico) + '</span>' +
+        '<span class="txt"><span class="nm">' + a.name + '</span>' +
+        '<span class="ds">' + a.desc + '</span>' +
+        '<span class="rw">Награда: ' + rewardText(a) + '</span></span>' +
+        '<span class="tick">' + icon('i-lock', 'sm') + '</span>';
+      achList.appendChild(d);
+      achEls[i] = { el: d, tick: d.querySelector('.tick') };
+    });
+  }
+
+  function recalcBonus() {
+    const B = { mult: 0, tap: 0, ps: 0, crit: 0, cpow: 0, lucky: 0 };
+    for (let i = 0; i < ACH.length; i++) {
+      const a = ACH[i];
+      if (!S.ach[a.name] || !a.bonus) continue;
+      for (const k in a.bonus) B[k] = (B[k] || 0) + a.bonus[k];
+    }
+    S.bonus = B;
+  }
+
+  function checkAch(st) {
+    let unlocked = 0;
+    const fresh = [];
+    for (let i = 0; i < ACH.length; i++) {
+      const a = ACH[i];
+      let done = !!S.ach[a.name];
+      if (!done) {
+        try { done = !!a.test(S, st); } catch (e) { done = false; }
+      }
+      const e = achEls[i];
+      if (e) {
+        const cls = 'achCard' + (a.tk ? ' tk' : '') + (done ? ' done' : '');
+        if (e.el.className !== cls) e.el.className = cls;
+        const tk = done ? icon('i-check', 'sm') : icon('i-lock', 'sm');
+        if (e.tick.innerHTML !== tk) e.tick.innerHTML = tk;
+      }
+      if (!done) continue;
+      unlocked++;
+      if (!S.ach[a.name]) {
+        S.ach[a.name] = 1;
+        if (a.tk) S.gold += a.tk;
+        fresh.push(a);
+        if (e) {
+          e.el.classList.add('pop');
+          setTimeout(function () { e.el.classList.remove('pop'); }, 500);
+        }
+      }
+    }
+    if (fresh.length) {
+      Sound.ach();
+      recalcBonus();
+      save();
+      toast('Достижение: ' + fresh[0].name + (fresh.length > 1 ? ' и ещё ' + (fresh.length - 1) : ''), 'i-trophy');
+    }
+    const label = unlocked + '/' + ACH.length;
+    if (achBadge.textContent !== label) achBadge.textContent = label;
+    const label2 = unlocked + ' / ' + ACH.length;
+    if (achCount.textContent !== label2) achCount.textContent = label2;
+    achBar.style.width = (ACH.length ? unlocked / ACH.length * 100 : 0) + '%';
+  }
+
+  /* ================= вкладки (док) ================= */
+  const dockEl = $('dock'), dockInd = $('dockInd');
+  const tabBtns = Array.prototype.slice.call(dockEl.querySelectorAll('.tab'));
+  function moveInd() {
+    const act = dockEl.querySelector('.tab.active');
+    if (!act) return;
+    const pr = dockEl.getBoundingClientRect();
+    const br = act.getBoundingClientRect();
+    dockInd.style.left = (br.left - pr.left - dockEl.clientLeft) + 'px';
+    dockInd.style.top = (br.top - pr.top - dockEl.clientTop) + 'px';
+    dockInd.style.width = br.width + 'px';
+    dockInd.style.height = br.height + 'px';
+  }
+  function setTab(name) {
+    document.body.setAttribute('data-tab', name);
+    tabBtns.forEach(function (b) { b.classList.toggle('active', b.dataset.tab === name); });
+    moveInd();
+    if (name === 'ach') checkAch(stats());
+    if (name === 'shop') paint(stats(), true);
+  }
+  tabBtns.forEach(function (b) {
+    b.addEventListener('click', function () {
+      Sound.init(); Sound.tick();
+      setTab(b.dataset.tab);
+    });
+  });
+  window.addEventListener('resize', moveInd);
+  window.addEventListener('load', moveInd);
+  setTimeout(moveInd, 80);
+
+  /* ================= сохранение ================= */
+  function save() {
+    S.last = Date.now();
+    try { LS.set(KEY, JSON.stringify(S)); } catch (e) {}
+  }
+  function load() {
+    let raw = null;
+    try { raw = LS.get(KEY); } catch (e) {}
+    if (raw) {
+      try {
+        const d = JSON.parse(raw);
+        if (d && typeof d === 'object') {
+          S.score = +d.score || 0;
+          S.total = +d.total || 0;
+          S.clicks = +d.clicks || 0;
+          S.crits = +d.crits || 0;
+          S.purchases = +d.purchases || 0;
+          S.luckyHits = +d.luckyHits || 0;
+          S.gold = +d.gold || 0;
+          S.goldAcc = +d.goldAcc || 0;
+          S.last = +d.last || 0;
+          S.levels = {}; S.glevels = {}; S.ach = {};
+          if (d.levels && typeof d.levels === 'object') {
+            for (const k in d.levels) S.levels[k] = Math.max(0, Math.floor(+d.levels[k] || 0));
+          }
+          if (d.glevels && typeof d.glevels === 'object') {
+            for (const k in d.glevels) S.glevels[k] = Math.max(0, Math.floor(+d.glevels[k] || 0));
+          }
+          if (d.ach && typeof d.ach === 'object') {
+            for (const k in d.ach) S.ach[k] = 1;
+          }
+        }
+      } catch (e) {}
+    }
+    recalcBonus();
+
+    const st = stats();
+    const elapsed = S.last ? (Date.now() - S.last) / 1000 : 0;
+    if (st.ps > 0 && elapsed > 60) {
+      const secs = Math.min(elapsed, 6 * 3600);
+      const gain = st.ps * secs * 0.6;
+      S.score += gain; S.total += gain;
+      setTimeout(function () { toast('Пока тебя не было: +' + fmt(gain) + ' за ' + fmtTime(secs), 'i-gear'); }, 700);
+    }
+  }
+
+  /* ================= цикл ================= */
+  let prev = performance.now();
+  let paintAcc = 0, tickAcc = 0, achAcc = 0, tkAcc = 0;
+  let tapsInSec = 0, cpsNow = 0, cpsAcc = 0;
+
+  function loop(t) {
+    try { step(t); } catch (e) { if (window.console) console.error('tick', e); }
+    requestAnimationFrame(loop);
+  }
+
+  function step(t) {
+    let dt = (t - prev) / 1000;
+    prev = t;
+    if (dt > 0.5) dt = 0.5;
+
+    const st = stats();
+    if (st.ps > 0) {
+      const add = st.ps * dt;
+      S.score += add; S.total += add;
+      tickAcc += dt;
+      if (tickAcc >= 1) { tickAcc = 0; Sound.tick(); }
+    } else { tickAcc = 0; }
+
+    paintAcc += dt;
+    if (paintAcc > 0.06) { paintAcc = 0; paint(st); }
+
+    achAcc += dt;
+    if (achAcc > 0.4) { achAcc = 0; checkAch(st); }
+
+    S.goldAcc += dt;
+    if (S.goldAcc >= TK_SEC) {
+      S.goldAcc -= TK_SEC;
+      S.gold++;
+      Sound.ach();
+      toast('+1 тикоин', 'i-gem');
+      save();
+    }
+    cpsAcc += dt;
+    if (cpsAcc >= 1) { cpsAcc = 0; cpsNow = tapsInSec; tapsInSec = 0; }
+
+    tkAcc += dt;
+    if (tkAcc > 0.2) {
+      tkAcc = 0;
+      const left = Math.max(0, Math.ceil(TK_SEC - S.goldAcc));
+      const mm = Math.floor(left / 60), ss = left % 60;
+      const txt = (mm < 10 ? '0' : '') + mm + ':' + (ss < 10 ? '0' : '') + ss;
+      if (tkTimer && tkTimer.textContent !== txt) tkTimer.textContent = txt;
+    }
+  }
+
+  /* ================= сброс ================= */
+  $('reset').addEventListener('click', function () {
+    if (!confirm('Сбросить весь прогресс, тикоинов и достижения?')) return;
+    S.score = 0; S.total = 0; S.clicks = 0; S.crits = 0;
+    S.purchases = 0; S.luckyHits = 0; S.gold = 0;
+    S.levels = {}; S.glevels = {}; S.ach = {}; S.bonus = {}; S.last = 0;
+    cache = { s:'', pc:'', ps:'', cr:'', cp:'', lk:'', gd:'' };
+    try { LS.remove(KEY); } catch (e) {}
+    recalcBonus();
+    paint(stats(), true);
+    checkAch(stats());
+    toast('Прогресс сброшен', 'i-reset');
+  });
+
+  /* ================= котик ================= */
+  const CAT_B64 = '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';
+  const face = $('face');
+  face.src = 'data:image/jpeg;base64,' + CAT_B64;
+  face.addEventListener('load', function () {
+    if (face.dataset.k) return;
+    face.dataset.k = '1';
+    try { cutoutBackground(face); } catch (e) {}
+  });
+
+  function cutoutBackground(img) {
+    const w = img.naturalWidth, h = img.naturalHeight;
+    if (!w || !h || w > 1600 || h > 1600) return;
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    const cx = cv.getContext('2d');
+    cx.drawImage(img, 0, 0);
+    const frame = cx.getImageData(0, 0, w, h);
+    const p = frame.data;
+    const idx = function (x, y) { return (y * w + x) * 4; };
+
+    const isNeutral = function (c) { return (Math.max(c[0], c[1], c[2]) - Math.min(c[0], c[1], c[2])) <= 32; };
+    const cands = [];
+    function cornerAvg(x0, y0) {
+      let r = 0, g = 0, b = 0, n = 0;
+      for (let y = y0; y < y0 + 3 && y < h; y++) {
+        for (let x = x0; x < x0 + 3 && x < w; x++) {
+          const i = idx(x, y); r += p[i]; g += p[i + 1]; b += p[i + 2]; n++;
+        }
+      }
+      return n ? [r / n, g / n, b / n] : null;
+    }
+    if (w > 8 && h > 8) {
+      const cs = [cornerAvg(0, 0), cornerAvg(w - 3, 0), cornerAvg(0, h - 3), cornerAvg(w - 3, h - 3)];
+      for (let i = 0; i < cs.length; i++) if (cs[i] && isNeutral(cs[i])) cands.push(cs[i]);
+    }
+    if (!cands.length) {
+      const sums = {}, borderTotal = 2 * w + 2 * h;
+      function border(x, y) {
+        const i = idx(x, y);
+        const key = ((p[i] >> 4) << 8) | ((p[i + 1] >> 4) << 4) | (p[i + 2] >> 4);
+        const s = sums[key] || (sums[key] = [0, 0, 0, 0]);
+        s[0] += p[i]; s[1] += p[i + 1]; s[2] += p[i + 2]; s[3]++;
+      }
+      for (let x = 0; x < w; x++) { border(x, 0); border(x, h - 1); }
+      for (let y = 0; y < h; y++) { border(0, y); border(w - 1, y); }
+      const bins = Object.keys(sums).map(function (k) { return [+k, sums[k]]; })
+        .filter(function (b) {
+          const r = b[1][0] / b[1][3], g = b[1][1] / b[1][3], bl = b[1][2] / b[1][3];
+          return (Math.max(r, g, bl) - Math.min(r, g, bl)) <= 32;
+        })
+        .sort(function (a, b) { return b[1][3] - a[1][3]; });
+      if (bins.length && bins[0][1][3] >= borderTotal * 0.35) {
+        for (let i = 0; i < Math.min(2, bins.length); i++) {
+          const b = bins[i];
+          if (i > 0 && b[1][3] < borderTotal * 0.08) break;
+          cands.push([b[1][0] / b[1][3], b[1][1] / b[1][3], b[1][2] / b[1][3]]);
+        }
+      }
+    }
+    const bgs = [];
+    for (let i = 0; i < cands.length; i++) {
+      let dup = false;
+      for (let j = 0; j < bgs.length; j++) {
+        const dr = cands[i][0] - bgs[j][0], dg = cands[i][1] - bgs[j][1], db = cands[i][2] - bgs[j][2];
+        if (dr * dr + dg * dg + db * db < 45 * 45) { dup = true; break; }
+      }
+      if (!dup) bgs.push(cands[i]);
+    }
+    if (!bgs.length) return;
+
+    const TOL = 30 * 30;
+    function near(i) {
+      for (let k = 0; k < bgs.length; k++) {
+        const dr = p[i] - bgs[k][0], dg = p[i + 1] - bgs[k][1], db = p[i + 2] - bgs[k][2];
+        if (dr * dr + dg * dg + db * db < TOL) return true;
+      }
+      return false;
+    }
+    const mark = new Uint8Array(w * h);
+    const stack = [];
+    function tryPush(x, y) {
+      const f = y * w + x;
+      if (!mark[f] && near(idx(x, y))) { mark[f] = 1; stack.push(f); }
+    }
+    for (let x = 0; x < w; x++) { tryPush(x, 0); tryPush(x, h - 1); }
+    for (let y = 0; y < h; y++) { tryPush(0, y); tryPush(w - 1, y); }
+    while (stack.length) {
+      const f = stack.pop();
+      const x = f % w, y = (f / w) | 0;
+      if (x > 0) tryPush(x - 1, y);
+      if (x < w - 1) tryPush(x + 1, y);
+      if (y > 0) tryPush(x, y - 1);
+      if (y < h - 1) tryPush(x, y + 1);
+    }
+    let removed = 0, minX = w, minY = h, maxX = 0, maxY = 0;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const f = y * w + x;
+        if (mark[f]) { p[f * 4 + 3] = 0; removed++; }
+        else {
+          if (x < minX) minX = x;
+          if (y < minY) minY = y;
+          if (x > maxX) maxX = x;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+    if (removed < w * h * 0.08 || removed > w * h * 0.75) return;
+    cx.putImageData(frame, 0, 0);
+    const cw = maxX - minX + 1, ch = maxY - minY + 1;
+    const out = document.createElement('canvas');
+    out.width = cw; out.height = ch;
+    out.getContext('2d').drawImage(cv, minX, minY, cw, ch, 0, 0, cw, ch);
+    face.src = out.toDataURL('image/png');
+  }
+
+  /* ================= старт ================= */
+  buildShop();
+  buildGoldShop();
+  buildAchUI();
+  load();
+  paint(stats(), true);
+  checkAch(stats());
+  setTab('tap');
+  setTimeout(moveInd, 300);
+
+  let savedSound = '1';
+  try { savedSound = LS.get(SND_KEY); } catch (e) {}
+  setSound(savedSound !== '0');
+
+  setInterval(save, 3000);
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) save();
+    else Sound.init();
+  });
+  window.addEventListener('pagehide', save);
+
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
