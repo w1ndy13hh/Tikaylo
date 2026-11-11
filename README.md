@@ -5,6 +5,10 @@
 Вся игра — один файл `app/src/main/assets/index.html` (HTML + CSS + JS, без внешних
 ресурсов и интернета). Приложение — тонкая WebView-обёртка вокруг него.
 
+- **package / applicationId:** `com.tikailo.myhtmlap`
+- **minSdk:** 24 (Android 7.0), **targetSdk:** 34
+- **Лицензия:** GPL-3.0
+
 ## Что внутри игры
 
 - 50 улучшений с разными механиками: плоские бонусы, ×2/×3/×5/×10/×20 к тыку,
@@ -31,23 +35,22 @@ gradle assembleDebug
 
 Нужна JDK 17 и Android SDK (platform 34, build-tools 34).
 
+Готовый APK из этого же исходника — в разделе Releases:
+https://github.com/w1ndy13hh/Tikaylo/releases/tag/v1.0
+
 ## Структура
 
 ```
-app/src/main/assets/index.html              — сама игра
-app/src/main/java/com/tikailo/app/MainActivity.java — WebView-обёртка
-app/src/main/AndroidManifest.xml            — манифест (package com.tikailo.app)
-app/src/main/res/drawable/ic_launcher.xml   — иконка
-app/src/main/res/values/strings.xml         — название приложения
+app/src/main/assets/index.html                                    — сама игра
+app/src/main/java/com/tikailo/myhtmlap/MainActivity.java          — WebView-обёртка
+app/src/main/AndroidManifest.xml                                   — манифест
+app/src/main/res/drawable/ic_launcher.xml                          — иконка
+app/src/main/res/values/strings.xml                                — название приложения
 ```
-
-## Требования
-
-Android 7.0 (API 24) и выше. Интернет не нужен.
 
 ## Лицензия
 
 GPL-3.0 — см. [LICENSE](LICENSE).
 
-Игра сделана для развлечения. Все графика и иконки — векторные, нарисованы специально
+Игра сделана для развлечения. Вся графика и иконки — векторные, нарисованы специально
 для этого проекта.

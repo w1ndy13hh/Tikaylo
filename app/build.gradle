@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace 'com.tikailo.app'
+    namespace 'com.tikailo.myhtmlap'
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.tikailo.app"
+        applicationId "com.tikailo.myhtmlap"
         minSdk 24
         targetSdk 34
         versionCode 1

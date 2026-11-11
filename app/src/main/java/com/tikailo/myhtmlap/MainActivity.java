@@ -1,4 +1,4 @@
-package com.tikailo.app;
+package com.tikailo.myhtmlap;
 
 import android.app.Activity;
 import android.os.Bundle;
